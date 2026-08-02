@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: khub-postgres
+    environment:
+        POSTGRES_DB: knowledgehub
+        POSTGRES_USER: knowledgehub
+        POSTGRES_PASSWORD: knowledgehub
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+        - khub-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: khub-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+    restart: unless-stopped
+    networks:
+        - khub-network
+
+
+
+networks:
+  khub-network:
+    driver: bridge
+
+
+volumes:
+    postgres_data:
+        driver: local
+
+    minio_data:
+        driver: local
+

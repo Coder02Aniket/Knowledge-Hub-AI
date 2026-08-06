@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: KnowledgeHub
+  datasource:
+    url: jdbc:postgresql://localhost:5432/knowledgehub
+    username: knowledgehub
+    password: knowledgehub
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  sql:
+    init:
+      mode: always
+server:
+    servlet:
+        context-path: /knowledgehub
+
+#minio configuration
+
+minio:
+    endpoint: http://localhost:9002
+    access-key: minioadmin
+    secret-key: minioadmin
+    default-bucket: knowledgehub

@@ -12,5 +12,5 @@ public class Document {
     private Long id;
 
     // Getters and setters
-    public String title ; 
+    public String title;
 }

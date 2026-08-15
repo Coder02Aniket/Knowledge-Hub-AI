@@ -5,6 +5,8 @@ spring:
     url: jdbc:postgresql://localhost:5432/knowledgehub
     username: knowledgehub
     password: knowledgehub
+    hikari:
+      max-lifetime: 100
   jpa:
     hibernate:
       ddl-auto: update
@@ -23,3 +25,4 @@ minio:
     access-key: minioadmin
     secret-key: minioadmin
     default-bucket: knowledgehub
+

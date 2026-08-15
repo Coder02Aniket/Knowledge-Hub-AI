@@ -32,7 +32,7 @@ public class DocumentController {
         // Logic to handle document upload
 
         //minio integration
-        if(bucketName == null){
+        if(bucketName == null || bucketName.isBlank()){
             fileService.uploadFile(file);
         }else {
            fileService.uploadFile(file,bucketName);

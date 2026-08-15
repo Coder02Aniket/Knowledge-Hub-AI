@@ -42,7 +42,7 @@ public class FileServiceImpl implements IFileService {
                         PutObjectRequest
                                 .builder()
                                 .bucket(bucketName)
-                                .key(file.getName())
+                                .key(file.getOriginalFilename())
                                 .build(),
                         RequestBody.fromBytes(file.getBytes())
                 );
@@ -88,6 +88,7 @@ public class FileServiceImpl implements IFileService {
     }
 
     public List<String> listFiles(String bucketName) {
+        if(!ifBucketExists(bucketName)) s3Client.createBucket(request -> request.bucket(bucketName));
         return s3Client.listObjectsV2(request -> request.bucket(bucketName))
                 .contents()
                 .stream()

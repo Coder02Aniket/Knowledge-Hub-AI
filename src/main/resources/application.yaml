@@ -5,12 +5,15 @@ spring:
     url: jdbc:postgresql://localhost:5432/knowledgehub
     username: knowledgehub
     password: knowledgehub
-    hikari:
-      max-lifetime: 100
+
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
+#    for logging actual sql query
+    properties:
+      hibernate:
+        format-sql: true
   sql:
     init:
       mode: always
@@ -26,3 +29,12 @@ minio:
     secret-key: minioadmin
     default-bucket: knowledgehub
 
+logging:
+  level:
+    web:  DEBUG
+#    For showing values instead of ?
+    org:
+      hibernate:
+        orm:
+          jdbc:
+            bind: TRACE

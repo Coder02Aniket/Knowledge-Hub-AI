@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.util.List;
 
 @Controller
-@RequestMapping("/documents" )
+@RequestMapping("/documents")
 public class DocumentController {
 
     @Autowired

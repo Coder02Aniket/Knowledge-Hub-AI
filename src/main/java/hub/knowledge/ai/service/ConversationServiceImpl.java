@@ -2,18 +2,19 @@ package hub.knowledge.ai.service;
 
 import hub.knowledge.ai.model.Conversation;
 import hub.knowledge.ai.model.User;
-import hub.knowledge.ai.repository.ConversationRepository;
+import hub.knowledge.ai.repository.ConversationDao;
 import hub.knowledge.ai.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
-public class ConversationsServiceImpl implements IConversationsService {
+public class ConversationServiceImpl implements IConversationService {
 
     @Autowired
-    private ConversationRepository conversationRepository;
+    private ConversationDao conversationDao;
 
     @Autowired
     private UserRepository userRepository;
@@ -21,14 +22,15 @@ public class ConversationsServiceImpl implements IConversationsService {
 
     @Override
     public Conversation getConversationById(String conversationId) {
-        return conversationRepository.getConversationByConversationId(conversationId);
+        Optional<Conversation> conversation =  conversationDao.findById(conversationId);
+        return conversation.orElseThrow(()-> new RuntimeException("Conversation with id " + conversationId + " not found"));
     }
 
 
 
     @Override
     public List<Conversation> getConversationsByUserId(String userId) {
-        return conversationRepository.getConversationsByUserId(userId);
+        return conversationDao.getConversationsByUserId(userId);
     }
 
     @Override
@@ -48,8 +50,13 @@ public class ConversationsServiceImpl implements IConversationsService {
 
 
 
-        conversationRepository.save(conversation);
+        conversationDao.save(conversation);
 
         return conversation;
+    }
+
+    @Override
+    public Conversation saveConversation(Conversation conversation) {
+        return conversationDao.save(conversation);
     }
 }

@@ -13,7 +13,7 @@ public class Document {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    private String documentId;
 
     // Getters and setters
     private String fileName;
@@ -27,6 +27,4 @@ public class Document {
 
     @OneToOne(mappedBy = "document")
     private Message message ;
-
-
 }

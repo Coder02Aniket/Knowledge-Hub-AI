@@ -1,7 +1,7 @@
 package hub.knowledge.ai.controller;
 
 import hub.knowledge.ai.model.Conversation;
-import hub.knowledge.ai.service.IConversationsService;
+import hub.knowledge.ai.service.IConversationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -13,7 +13,7 @@ import java.util.List;
 public class ConversationController {
 
     @Autowired
-    private IConversationsService conversationService;
+    private IConversationService conversationService;
 
     @ResponseBody
     @GetMapping("/list")

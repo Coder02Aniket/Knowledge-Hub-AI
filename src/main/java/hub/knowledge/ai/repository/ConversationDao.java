@@ -5,11 +5,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository("conversationRepo")
-public interface ConversationRepository extends JpaRepository<Conversation, String> {
+public interface ConversationDao extends JpaRepository<Conversation, String> {
 
-    Conversation getConversationByConversationId(String conversationId);
+    Optional<Conversation> getConversationByConversationId(String conversationId);
 
     List<Conversation> getConversationsByUserId(String userId);
 }

@@ -29,12 +29,3 @@ minio:
     secret-key: minioadmin
     default-bucket: knowledgehub
 
-logging:
-  level:
-    web:  DEBUG
-#    For showing values instead of ?
-    org:
-      hibernate:
-        orm:
-          jdbc:
-            bind: TRACE

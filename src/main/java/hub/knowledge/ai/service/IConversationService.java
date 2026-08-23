@@ -4,8 +4,9 @@ import hub.knowledge.ai.model.Conversation;
 import hub.knowledge.ai.model.User;
 
 import java.util.List;
+import java.util.Optional;
 
-public interface IConversationsService {
+public interface IConversationService {
 
     Conversation getConversationById(String conversationId);
 
@@ -15,4 +16,5 @@ public interface IConversationsService {
 
     Conversation CreateConversation(String userId);
 
+    Conversation saveConversation(Conversation conversation);
 }

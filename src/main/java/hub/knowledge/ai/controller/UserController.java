@@ -14,7 +14,7 @@ public class UserController {
     private IUserService userService;
 
     @PostMapping(value = "/create")
-    public User addUser(@ModelAttribute User user) {
+    public User addUser(@RequestBody User user) {
 
         user.hashPassword();
 

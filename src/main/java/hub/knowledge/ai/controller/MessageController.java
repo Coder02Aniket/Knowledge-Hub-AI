@@ -16,7 +16,7 @@ class MessageController {
     @PostMapping("/chat")
     public MessageDTO sendMessage(@RequestBody MessageDTO messageDTO , @RequestParam(name="userId" , required = false) String userId) {
         //TODO: Implement automatic retrieval of Username through Authentication Context -> Need to remove userId from this method
-        return messageServiceImpl.processUserMessage(messageDTO , (userId ==null || userId.isBlank()) ? userId : "aniket87");
+        return messageServiceImpl.processUserMessage(messageDTO , (userId ==null || userId.isBlank()) ? "aniket87" : userId);
 
     }
 }

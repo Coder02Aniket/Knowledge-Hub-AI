@@ -12,6 +12,8 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 import java.net.URI;
 
+
+
 @Configuration
 @ConfigurationProperties("minio")
 public class MinioConfiguration {

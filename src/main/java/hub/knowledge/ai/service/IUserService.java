@@ -10,7 +10,7 @@ public interface IUserService {
 
     User findUserById(String id);
 
-    User findUserByName(String userName);
+    User findUserByuserName(String userName);
 
 
 }

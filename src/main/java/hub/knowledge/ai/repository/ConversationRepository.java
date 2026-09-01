@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository("conversationRepo")
-public interface ConversationDao extends JpaRepository<Conversation, String> {
+public interface ConversationRepository extends JpaRepository<Conversation, String> {
 
     Optional<Conversation> getConversationByConversationId(String conversationId);
 

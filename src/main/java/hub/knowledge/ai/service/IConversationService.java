@@ -1,5 +1,6 @@
 package hub.knowledge.ai.service;
 
+import hub.knowledge.ai.dto.ConversationDTO;
 import hub.knowledge.ai.model.Conversation;
 import hub.knowledge.ai.model.User;
 
@@ -17,4 +18,6 @@ public interface IConversationService {
     Conversation CreateConversation(String userId);
 
     Conversation saveConversation(Conversation conversation);
+
+    ConversationDTO SaveConversationAndGetDTO(ConversationDTO conversationDTO);
 }

@@ -24,7 +24,7 @@ public class Conversation {
     @Getter @Setter
     private String conversationId;
 
-    @NotBlank
+
     @Getter @Setter
     private String title;
 
@@ -44,7 +44,7 @@ public class Conversation {
         messages.add(m);
     }
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id")
     @Getter @Setter
     private User user;

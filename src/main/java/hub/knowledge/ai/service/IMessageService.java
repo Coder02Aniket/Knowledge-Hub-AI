@@ -7,5 +7,6 @@ public interface IMessageService {
 
     MessageDTO processUserMessage(MessageDTO messageDTO);
 
+    MessageDTO saveMessage(MessageDTO messageDTO);
 
 }

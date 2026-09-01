@@ -12,7 +12,7 @@ import java.time.Instant;
 public class Message {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    private String messageId;
 
     @CreationTimestamp
     private Instant sentAt;

@@ -1,31 +1,93 @@
 spring:
   application:
     name: KnowledgeHub
+  # Load local developer settings (.env) when present. Real environment variables always win.
+  config:
+    import: optional:file:.env[.properties]
   datasource:
-    url: jdbc:postgresql://localhost:5432/knowledgehub
-    username: knowledgehub
-    password: knowledgehub
-
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/knowledgehub}
+    username: ${SPRING_DATASOURCE_USERNAME:knowledgehub}
+    password: ${SPRING_DATASOURCE_PASSWORD:knowledgehub}
+    hikari:
+      # pgvector must exist before Hibernate runs its schema update.
+      connection-init-sql: "CREATE EXTENSION IF NOT EXISTS vector"
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
-#    for logging actual sql query
+    open-in-view: false
+    show-sql: false
     properties:
       hibernate:
-        format-sql: true
-  sql:
-    init:
-      mode: always
-server:
-    servlet:
-        context-path: /knowledgehub
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+  servlet:
+    multipart:
+      max-file-size: ${KNOWLEDGEHUB_MAX_UPLOAD_SIZE:20MB}
+      max-request-size: ${KNOWLEDGEHUB_MAX_REQUEST_SIZE:25MB}
+  thymeleaf:
+    cache: ${THYMELEAF_CACHE:false}
+  ai:
+    google:
+      genai:
+        api-key: ${GENAI_API_KEY:not-configured}
+        chat:
+          model: ${GOOGLE_GENAI_CHAT_MODEL:gemini-3.1-flash-lite}
+          options:
+            temperature: ${GOOGLE_GENAI_TEMPERATURE:0.2}
+        embedding:
+          api-key: ${GENAI_API_KEY:not-configured}
+          text:
+            model: ${GOOGLE_GENAI_EMBEDDING_MODEL:gemini-embedding-001}
+            dimensions: ${GOOGLE_GENAI_EMBEDDING_DIMENSIONS:768}
+            task-type: RETRIEVAL_DOCUMENT
 
-#minio configuration
+server:
+  port: ${PORT:8080}
+  servlet:
+    context-path: /knowledgehub
+  error:
+    whitelabel:
+      enabled: false
 
 minio:
-    endpoint: http://localhost:9002
-    access-key: minioadmin
-    secret-key: minioadmin
-    default-bucket: knowledgehub
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9002}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  bucket: ${MINIO_BUCKET:knowledgehub}
+  region: ${MINIO_REGION:us-east-1}
 
+knowledgehub:
+  ai:
+    # google = Gemini embeddings, local = deterministic offline hashing embeddings
+    embedding-provider: ${KNOWLEDGEHUB_EMBEDDING_PROVIDER:google}
+    embedding-dimensions: ${KNOWLEDGEHUB_EMBEDDING_DIMENSIONS:768}
+    max-history-messages: ${KNOWLEDGEHUB_MAX_HISTORY:20}
+    model-label: ${KNOWLEDGEHUB_MODEL_LABEL:Gemini}
+  retrieval:
+    top-k: ${KNOWLEDGEHUB_RETRIEVAL_TOP_K:6}
+    min-score: ${KNOWLEDGEHUB_RETRIEVAL_MIN_SCORE:0.20}
+    max-context-characters: ${KNOWLEDGEHUB_RETRIEVAL_MAX_CONTEXT:9000}
+  ingestion:
+    chunk-size: ${KNOWLEDGEHUB_CHUNK_SIZE:1200}
+    chunk-overlap: ${KNOWLEDGEHUB_CHUNK_OVERLAP:200}
+    embedding-batch-size: ${KNOWLEDGEHUB_EMBEDDING_BATCH_SIZE:16}
+    max-file-size-bytes: ${KNOWLEDGEHUB_MAX_FILE_SIZE_BYTES:20971520}
+    allowed-extensions: ${KNOWLEDGEHUB_ALLOWED_EXTENSIONS:pdf,txt,md,csv,json}
+    worker-threads: ${KNOWLEDGEHUB_INGESTION_THREADS:2}
+
+# JWT configuration (programmatic API clients only; the web UI uses a session)
+jwt:
+  secret: ${JWT_SECRET:change-me-this-default-is-not-for-production-use-32chars}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    org.springframework.web: INFO
+    hub.knowledge.ai: DEBUG

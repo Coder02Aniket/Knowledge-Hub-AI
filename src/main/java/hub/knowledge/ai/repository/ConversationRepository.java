@@ -7,10 +7,14 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
-@Repository("conversationRepo")
+@Repository
 public interface ConversationRepository extends JpaRepository<Conversation, String> {
 
-    Optional<Conversation> getConversationByConversationId(String conversationId);
+    List<Conversation> findByUser_IdOrderByUpdatedAtDesc(String userId);
 
-    List<Conversation> getConversationsByUserId(String userId);
+    Optional<Conversation> findByConversationIdAndUser_Id(String conversationId, String userId);
+
+    Optional<Conversation> findByConversationIdAndUser_Username(String conversationId, String username);
+
+    long countByUser_Id(String userId);
 }

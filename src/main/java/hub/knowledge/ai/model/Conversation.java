@@ -1,52 +1,57 @@
 package hub.knowledge.ai.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import lombok.AccessLevel;
-import lombok.Data;
-
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CollectionType;
-import org.hibernate.annotations.CurrentTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.UUID;
 
 @Entity
-@Table(name="conversations")
+@Getter
+@Setter
+@NoArgsConstructor
+@Table(name = "conversations", indexes = {
+        @Index(name = "idx_conversations_user_updated", columnList = "user_id, updated_at")
+})
 public class Conversation {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Getter @Setter
+    @Column(length = 36)
     private String conversationId;
 
-
-    @Getter @Setter
+    @Column(nullable = false, length = 200)
     private String title;
 
-    @CurrentTimestamp
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
-
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY , mappedBy = "conversation")
-    @Getter
-    private Set<Message> messages = new HashSet<>();
-
-
-    public void addMessage(Message m){
-        m.setConversation(this);
-        messages.add(m);
-    }
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "user_id")
-    @Getter @Setter
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    void onCreate() {
+        if (conversationId == null) {
+            conversationId = UUID.randomUUID().toString();
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = now;
+        }
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
+    public void touch() {
+        updatedAt = LocalDateTime.now();
+    }
 }

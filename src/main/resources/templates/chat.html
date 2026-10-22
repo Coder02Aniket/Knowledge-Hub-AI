@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KnowledgeHub</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/alpinejs@3.13.3/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            750: '#2d3748',
+                            850: '#1a202c',
+                            950: '#0d1117'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .markdown-body p { margin-bottom: 0.75em; }
+        .markdown-body p:last-child { margin-bottom: 0; }
+        .markdown-body pre { background-color: #1e1e1e; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 0.75em; }
+        .markdown-body code { background-color: rgba(255,255,255,0.1); padding: 0.1em 0.3em; border-radius: 0.25rem; font-family: monospace; font-size: 0.9em; }
+        .markdown-body pre code { background-color: transparent; padding: 0; }
+        .markdown-body ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 0.75em; }
+        .markdown-body ol { list-style-type: decimal; margin-left: 1.5rem; margin-bottom: 0.75em; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 h-screen overflow-hidden flex flex-col font-sans antialiased"
+      x-data="appData()" x-init="initApp()">
+
+    <!-- Modals -->
+    <div x-cloak x-show="showAuthModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="bg-slate-850 p-8 rounded-xl border border-slate-700 w-full max-w-md shadow-2xl" @click.away="if(user) showAuthModal = false">
+            <h2 class="text-2xl font-bold mb-6 text-white" x-text="isLogin ? 'Sign In' : 'Create Account'"></h2>
+            
+            <div x-show="authError" class="mb-4 p-3 bg-red-900/50 border border-red-500/50 text-red-200 rounded text-sm" x-text="authError"></div>
+
+            <form @submit.prevent="submitAuth">
+                <div class="space-y-4">
+                    <div x-show="!isLogin" class="flex gap-4">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-slate-400 mb-1">First Name</label>
+                            <input type="text" x-model="authForm.firstName" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-slate-400 mb-1">Last Name</label>
+                            <input type="text" x-model="authForm.lastName" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1">Username</label>
+                        <input type="text" x-model="authForm.username" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors">
+                    </div>
+                    
+                    <div x-show="!isLogin">
+                        <label class="block text-sm font-medium text-slate-400 mb-1">Email</label>
+                        <input type="email" x-model="authForm.email" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1">Password</label>
+                        <input type="password" x-model="authForm.password" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors">
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 px-4 rounded-lg transition-colors flex justify-center items-center h-10">
+                        <span x-show="!authLoading" x-text="isLogin ? 'Sign In' : 'Create Account'"></span>
+                        <svg x-show="authLoading" class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    </button>
+                </div>
+            </form>
+            
+            <div class="mt-4 text-center text-sm text-slate-400">
+                <button type="button" @click="isLogin = !isLogin; authError = ''" class="text-indigo-400 hover:text-indigo-300 transition-colors" x-text="isLogin ? 'Need an account? Sign up' : 'Already have an account? Sign in'"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="flex flex-1 overflow-hidden" x-show="user" x-cloak>
+        
+        <!-- Sidebar -->
+        <div class="w-72 bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300" :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full fixed z-20 h-full'">
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2 font-bold text-lg text-white">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </div>
+                    KnowledgeHub
+                </div>
+                <button @click="sidebarOpen = false" class="md:hidden text-slate-400 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="p-3">
+                <button @click="newChat()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg py-2.5 px-4 flex items-center gap-2 transition-colors font-medium">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    New Chat
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-3 space-y-1">
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-2 mt-2">Recent</div>
+                
+                <template x-for="conv in conversations" :key="conv.id">
+                    <div class="group relative flex items-center rounded-lg cursor-pointer transition-colors"
+                         :class="currentConvId === conv.id ? 'bg-indigo-500/10 text-indigo-300' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'"
+                         @click="loadChat(conv.id)">
+                        <div class="flex-1 truncate py-2.5 pl-3 pr-8" x-text="conv.title"></div>
+                        <button @click.stop="deleteChat(conv.id)" class="absolute right-2 opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-red-400 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                    </div>
+                </template>
+                
+                <div x-show="conversations.length === 0" class="text-slate-500 text-sm italic px-3 py-2">No history</div>
+            </div>
+
+            <div class="p-4 border-t border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-300" x-text="user ? user.charAt(0).toUpperCase() : '?'"></div>
+                    <div class="text-sm font-medium truncate w-32" x-text="user"></div>
+                </div>
+                <button @click="logout()" class="text-slate-500 hover:text-slate-300" title="Sign out">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="flex-1 flex flex-col relative h-full bg-slate-950">
+            
+            <!-- Topbar -->
+            <div class="h-14 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md flex items-center justify-between px-4 z-10 shrink-0">
+                <div class="flex items-center gap-3">
+                    <button @click="sidebarOpen = !sidebarOpen" class="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
+                    <div class="px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-xs font-medium flex items-center gap-2 text-slate-300 shadow-sm">
+                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>
+                        Ready
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button @click="viewMode = 'chat'" class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors" :class="viewMode === 'chat' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'">Chat</button>
+                    <button @click="viewMode = 'docs'; if(currentConvId) loadDocs()" class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5" :class="viewMode === 'docs' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Vault
+                    </button>
+                </div>
+            </div>
+
+            <!-- Messages Stream -->
+            <div x-show="viewMode === 'chat'" class="flex-1 overflow-y-auto p-4 md:p-6 pb-32" id="messages-container">
+                <div class="max-w-3xl mx-auto space-y-6">
+                    
+                    <div x-show="messages.length === 0" class="text-center py-20">
+                        <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl border border-slate-800">
+                            <svg class="w-8 h-8 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        </div>
+                        <h2 class="text-2xl font-bold mb-2">How can I help you today?</h2>
+                        <p class="text-slate-400 max-w-md mx-auto mb-8">Ask a question or switch to the Vault to upload documents for context-aware answers.</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-left">
+                            <button @click="setInput('Summarize the attached documents.')" class="p-4 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-800 hover:border-slate-700 transition-all text-sm group">
+                                <div class="font-medium text-slate-200 mb-1 group-hover:text-indigo-300 transition-colors">Summarize documents</div>
+                                <div class="text-slate-500">Provide a high level overview of the vault contents.</div>
+                            </button>
+                            <button @click="setInput('What are the key takeaways?')" class="p-4 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-800 hover:border-slate-700 transition-all text-sm group">
+                                <div class="font-medium text-slate-200 mb-1 group-hover:text-indigo-300 transition-colors">Find key takeaways</div>
+                                <div class="text-slate-500">Extract the most important points.</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <template x-for="msg in messages" :key="msg.messageId">
+                        <div class="flex gap-4" :class="msg.role === 'USER' ? 'justify-end' : ''">
+                            
+                            <!-- Bot Avatar -->
+                            <div x-show="msg.role === 'ASSISTANT'" class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shrink-0 mt-1">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            </div>
+
+                            <!-- Bubble -->
+                            <div class="max-w-[85%] rounded-2xl px-5 py-3.5 shadow-sm"
+                                 :class="msg.role === 'USER' ? 'bg-indigo-600 text-white rounded-br-sm' : (msg.failed ? 'bg-red-900/20 border border-red-900/50 text-red-200 rounded-bl-sm' : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-sm')">
+                                
+                                <div x-show="msg.role === 'USER'" class="whitespace-pre-wrap leading-relaxed" x-text="msg.content"></div>
+                                
+                                <div x-show="msg.role === 'ASSISTANT' && !msg.failed" class="markdown-body leading-relaxed text-[0.95rem]" x-html="renderMarkdown(msg.content)"></div>
+                                
+                                <div x-show="msg.failed" class="flex items-start gap-2">
+                                    <svg class="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    <div>
+                                        <div class="font-medium text-red-300 mb-1">Response Failed</div>
+                                        <div class="text-sm opacity-90 whitespace-pre-wrap" x-text="msg.failureReason"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Sources -->
+                                <div x-show="msg.sources && msg.sources.length > 0" class="mt-4 pt-3 border-t border-slate-700/50 flex flex-wrap gap-2">
+                                    <template x-for="(source, idx) in msg.sources">
+                                        <div class="group relative cursor-pointer" @click="toggleSource(source.chunkIndex)">
+                                            <div class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 transition-colors">
+                                                <svg class="w-3 h-3 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                                <span x-text="'[' + (idx+1) + ']'"></span>
+                                                <span class="max-w-[120px] truncate" x-text="source.documentName"></span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                            
+                            <!-- User Avatar -->
+                            <div x-show="msg.role === 'USER'" class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold shrink-0 mt-1" x-text="user ? user.charAt(0).toUpperCase() : 'U'"></div>
+                        </div>
+                    </template>
+                    
+                    <!-- Thinking indicator -->
+                    <div x-show="isThinking" class="flex gap-4">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shrink-0 mt-1">
+                            <svg class="w-4 h-4 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        </div>
+                        <div class="bg-slate-900 border border-slate-800 rounded-2xl rounded-bl-sm px-5 py-4 flex items-center gap-2">
+                            <div class="flex gap-1">
+                                <div class="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style="animation-delay: 0ms"></div>
+                                <div class="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style="animation-delay: 150ms"></div>
+                                <div class="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style="animation-delay: 300ms"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents Vault -->
+            <div x-show="viewMode === 'docs'" class="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-950">
+                <div class="max-w-4xl mx-auto">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h2 class="text-2xl font-bold text-white mb-1">Document Vault</h2>
+                            <p class="text-slate-400 text-sm">Manage context for <span class="text-indigo-300 font-medium" x-text="currentConvTitle || 'this conversation'"></span>.</p>
+                        </div>
+                        <div x-show="!currentConvId" class="px-3 py-1.5 bg-amber-900/20 text-amber-400 border border-amber-900/50 rounded-lg text-sm flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            Start a chat first to attach documents
+                        </div>
+                    </div>
+
+                    <div class="grid gap-6 md:grid-cols-3">
+                        
+                        <!-- Upload Card -->
+                        <div class="md:col-span-1" :class="!currentConvId ? 'opacity-50 pointer-events-none' : ''">
+                            <div class="bg-slate-900 rounded-xl border border-slate-800 p-5 shadow-lg">
+                                <h3 class="font-medium text-white mb-4">Upload File</h3>
+                                
+                                <form @submit.prevent="uploadDocument" class="space-y-4">
+                                    <div class="border-2 border-dashed border-slate-700 hover:border-indigo-500 bg-slate-950/50 rounded-lg p-6 text-center cursor-pointer transition-colors relative"
+                                         @click="$refs.fileInput.click()"
+                                         @dragover.prevent="$el.classList.add('border-indigo-500', 'bg-indigo-500/5')"
+                                         @dragleave.prevent="$el.classList.remove('border-indigo-500', 'bg-indigo-500/5')"
+                                         @drop.prevent="$el.classList.remove('border-indigo-500', 'bg-indigo-500/5'); handleDrop($event)">
+                                        
+                                        <input type="file" x-ref="fileInput" @change="handleFileSelect" class="hidden">
+                                        
+                                        <div x-show="!selectedFile">
+                                            <div class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                            </div>
+                                            <div class="text-sm font-medium text-slate-300">Click or drag file</div>
+                                            <div class="text-xs text-slate-500 mt-1">PDF, TXT, CSV, MD</div>
+                                        </div>
+                                        
+                                        <div x-show="selectedFile" class="flex items-center gap-3 bg-slate-800 p-2 rounded text-left border border-slate-700">
+                                            <div class="w-8 h-8 bg-indigo-500/20 text-indigo-400 rounded flex items-center justify-center shrink-0 text-xs font-bold" x-text="selectedFile ? selectedFile.name.split('.').pop().substring(0,3).toUpperCase() : ''"></div>
+                                            <div class="flex-1 min-w-0">
+                                                <div class="text-sm font-medium text-slate-200 truncate" x-text="selectedFile?.name"></div>
+                                                <div class="text-xs text-slate-500" x-text="selectedFile ? (selectedFile.size/1024).toFixed(0)+' KB' : ''"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div x-show="uploadError" class="text-xs text-red-400 bg-red-900/20 border border-red-900/50 p-2 rounded" x-text="uploadError"></div>
+                                    
+                                    <button type="submit" :disabled="!selectedFile || isUploading" class="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 rounded-lg transition-colors flex justify-center items-center h-10 shadow-sm">
+                                        <span x-show="!isUploading">Upload to Vault</span>
+                                        <svg x-show="isUploading" class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Documents List -->
+                        <div class="md:col-span-2">
+                            <div class="bg-slate-900 rounded-xl border border-slate-800 shadow-lg overflow-hidden flex flex-col h-[500px]">
+                                <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900">
+                                    <h3 class="font-medium text-white">Attached Files</h3>
+                                    <button @click="loadDocs()" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                        Refresh
+                                    </button>
+                                </div>
+                                
+                                <div class="flex-1 overflow-y-auto p-2 space-y-2">
+                                    <div x-show="isLoadingDocs" class="flex justify-center py-8">
+                                        <svg class="animate-spin h-6 w-6 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    </div>
+                                    
+                                    <div x-show="!isLoadingDocs && docs.length === 0" class="text-center py-16 text-slate-500 text-sm">
+                                        No documents attached to this conversation.
+                                    </div>
+                                    
+                                    <template x-for="doc in docs" :key="doc.documentId">
+                                        <div class="flex items-center gap-3 p-3 rounded-lg border bg-slate-950/50 hover:bg-slate-800 transition-colors"
+                                             :class="doc.status === 'FAILED' ? 'border-red-900/50' : 'border-slate-800'">
+                                            
+                                            <!-- Status Icon -->
+                                            <div class="shrink-0">
+                                                <div x-show="doc.status === 'COMPLETED'" class="w-10 h-10 rounded bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20" title="Ready">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                </div>
+                                                <div x-show="doc.status === 'PROCESSING' || doc.status === 'PENDING'" class="w-10 h-10 rounded bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20" title="Extracting text & embeddings...">
+                                                    <svg class="w-5 h-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                </div>
+                                                <div x-show="doc.status === 'FAILED'" class="w-10 h-10 rounded bg-red-500/10 text-red-400 flex items-center justify-center border border-red-500/20" title="Failed">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-baseline justify-between mb-0.5">
+                                                    <div class="font-medium text-sm text-slate-200 truncate pr-2" x-text="doc.fileName"></div>
+                                                    <div class="text-xs text-slate-500 shrink-0" x-text="doc.chunkCount ? doc.chunkCount + ' chunks' : ''"></div>
+                                                </div>
+                                                <div class="flex items-center gap-2 text-xs">
+                                                    <span class="text-slate-500 uppercase" x-text="doc.extension"></span>
+                                                    <span class="text-slate-600">•</span>
+                                                    <span class="text-slate-500" x-text="doc.sizeLabel"></span>
+                                                    
+                                                    <span x-show="doc.status === 'FAILED'" class="text-red-400 ml-auto truncate" x-text="doc.processingError"></span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex items-center gap-1 shrink-0 ml-2">
+                                                <button x-show="doc.retryable" @click="retryDoc(doc.documentId)" class="p-1.5 text-slate-500 hover:text-amber-400 hover:bg-slate-800 rounded transition-colors" title="Retry processing">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                                </button>
+                                                <a :href="'/knowledgehub/api/documents/' + doc.documentId + '/download'" target="_blank" class="p-1.5 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded transition-colors" title="Download original">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                                </a>
+                                                <button @click="deleteDoc(doc.documentId)" :disabled="doc.status === 'PROCESSING' || doc.status === 'PENDING'" class="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="Remove from vault">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area (Only visible in Chat mode) -->
+            <div x-show="viewMode === 'chat'" class="absolute bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-slate-950 via-slate-950 to-transparent pt-12">
+                <div class="max-w-3xl mx-auto relative group">
+                    <form @submit.prevent="sendMessage" class="relative bg-slate-900 border border-slate-700 group-focus-within:border-indigo-500/50 rounded-2xl shadow-xl transition-all overflow-hidden flex flex-col">
+                        
+                        <div x-show="currentConvId" class="px-4 py-2 bg-slate-800/50 border-b border-slate-800/50 flex justify-between items-center text-xs">
+                            <div class="text-slate-400 flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                <span class="font-medium text-slate-300" x-text="currentConvTitle || 'Active Chat'"></span>
+                            </div>
+                            <div class="text-slate-500 flex items-center gap-2">
+                                <span x-show="docsCount > 0" class="flex items-center gap-1 text-emerald-400/80">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span x-text="docsCount + ' doc(s) grounded'"></span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <textarea x-model="inputText" 
+                                  @keydown.enter.prevent="if(!event.shiftKey) sendMessage()"
+                                  placeholder="Message KnowledgeHub... (Shift+Enter for newline)" 
+                                  class="w-full bg-transparent text-slate-200 p-4 max-h-48 min-h-[60px] resize-none focus:outline-none placeholder-slate-500"
+                                  rows="1"
+                                  x-ref="messageInput"
+                                  @input="$el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 200) + 'px'"></textarea>
+                        
+                        <div class="flex justify-between items-center px-3 py-2 bg-slate-900">
+                            <button type="button" @click="viewMode = 'docs'; if(currentConvId) loadDocs()" class="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors" title="Manage documents">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                            </button>
+                            
+                            <button type="submit" :disabled="!inputText.trim() || isThinking" class="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white p-2 rounded-lg transition-colors shadow-sm disabled:shadow-none">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                            </button>
+                        </div>
+                    </form>
+                    <div class="text-center mt-2 text-[10px] text-slate-500">KnowledgeHub can make mistakes. Verify important information.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function appData() {
+            return {
+                user: null,
+                showAuthModal: true,
+                isLogin: true,
+                authLoading: false,
+                authError: '',
+                authForm: { username: '', password: '', email: '', firstName: '', lastName: '' },
+                
+                sidebarOpen: true,
+                viewMode: 'chat', // 'chat' or 'docs'
+                
+                conversations: [],
+                currentConvId: null,
+                currentConvTitle: '',
+                
+                messages: [],
+                inputText: '',
+                isThinking: false,
+                
+                docs: [],
+                docsCount: 0,
+                isLoadingDocs: false,
+                
+                selectedFile: null,
+                isUploading: false,
+                uploadError: '',
+                pollInterval: null,
+
+                async initApp() {
+                    const statusRes = await fetch('/knowledgehub/auth/status');
+                    const status = await statusRes.json();
+                    if (status.authenticated) {
+                        this.user = status.username;
+                        this.showAuthModal = false;
+                        this.loadConversations();
+                    } else {
+                        this.user = null;
+                        this.showAuthModal = true;
+                    }
+                },
+
+                async submitAuth() {
+                    this.authLoading = true;
+                    this.authError = '';
+                    try {
+                        const url = this.isLogin ? '/knowledgehub/api/auth/login' : '/knowledgehub/api/auth/register';
+                        const body = this.isLogin 
+                            ? `username=${encodeURIComponent(this.authForm.username)}&password=${encodeURIComponent(this.authForm.password)}`
+                            : JSON.stringify(this.authForm);
+                            
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': this.isLogin ? 'application/x-www-form-urlencoded' : 'application/json'
+                            },
+                            body: body
+                        });
+                        
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.user = data.username || this.authForm.username;
+                            this.showAuthModal = false;
+                            this.authForm = { username: '', password: '', email: '', firstName: '', lastName: '' };
+                            this.loadConversations();
+                        } else {
+                            const err = await res.json();
+                            this.authError = err.error || 'Authentication failed.';
+                        }
+                    } catch (e) {
+                        this.authError = 'Network error during authentication.';
+                    } finally {
+                        this.authLoading = false;
+                    }
+                },
+
+                async logout() {
+                    await fetch('/knowledgehub/api/auth/logout', { method: 'POST' });
+                    this.user = null;
+                    this.showAuthModal = true;
+                    this.conversations = [];
+                    this.currentConvId = null;
+                    this.messages = [];
+                    this.docs = [];
+                    this.stopPolling();
+                },
+
+                async loadConversations() {
+                    const res = await fetch('/knowledgehub/api/conversations');
+                    if (res.ok) {
+                        this.conversations = await res.json();
+                    }
+                },
+
+                newChat() {
+                    this.currentConvId = null;
+                    this.currentConvTitle = '';
+                    this.messages = [];
+                    this.docs = [];
+                    this.docsCount = 0;
+                    this.viewMode = 'chat';
+                    this.stopPolling();
+                    if (window.innerWidth < 768) this.sidebarOpen = false;
+                    setTimeout(() => {
+                        if (this.$refs.messageInput) this.$refs.messageInput.focus();
+                    }, 50);
+                },
+
+                async loadChat(id) {
+                    this.currentConvId = id;
+                    const conv = this.conversations.find(c => c.id === id);
+                    this.currentConvTitle = conv ? conv.title : '';
+                    this.viewMode = 'chat';
+                    if (window.innerWidth < 768) this.sidebarOpen = false;
+                    
+                    const res = await fetch(`/knowledgehub/api/chat/${id}`);
+                    if (res.ok) {
+                        this.messages = await res.json();
+                        this.scrollToBottom();
+                    }
+                    
+                    // Quick check for grounded docs count
+                    const dRes = await fetch(`/knowledgehub/api/documents?conversationId=${id}`);
+                    if (dRes.ok) {
+                        const d = await dRes.json();
+                        this.docsCount = d.filter(doc => doc.status === 'COMPLETED').length;
+                    }
+                },
+
+                async deleteChat(id) {
+                    if (!confirm('Delete this conversation and all its attached documents?')) return;
+                    await fetch(`/knowledgehub/api/conversations/${id}`, { method: 'DELETE' });
+                    if (this.currentConvId === id) {
+                        this.newChat();
+                    }
+                    this.loadConversations();
+                },
+
+                setInput(text) {
+                    this.inputText = text;
+                    setTimeout(() => {
+                        if (this.$refs.messageInput) {
+                            this.$refs.messageInput.style.height = 'auto';
+                            this.$refs.messageInput.style.height = Math.min(this.$refs.messageInput.scrollHeight, 200) + 'px';
+                            this.$refs.messageInput.focus();
+                        }
+                    }, 50);
+                },
+
+                async sendMessage() {
+                    if (!this.inputText.trim() || this.isThinking) return;
+                    
+                    const text = this.inputText.trim();
+                    this.inputText = '';
+                    if (this.$refs.messageInput) this.$refs.messageInput.style.height = 'auto';
+                    
+                    // Optimistic user message
+                    this.messages.push({
+                        messageId: 'temp-' + Date.now(),
+                        role: 'USER',
+                        content: text
+                    });
+                    
+                    this.isThinking = true;
+                    this.scrollToBottom();
+                    
+                    let url = '/knowledgehub/api/chat';
+                    if (this.currentConvId) {
+                        url += '?conversationId=' + this.currentConvId;
+                    }
+                    
+                    try {
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: text })
+                        });
+                        
+                        if (res.ok) {
+                            const reply = await res.json();
+                            this.messages.push(reply);
+                            
+                            // If this was a new chat, the backend created it. We need to fetch the list to get its ID.
+                            if (!this.currentConvId) {
+                                await this.loadConversations();
+                                if (this.conversations.length > 0) {
+                                    this.currentConvId = this.conversations[0].id;
+                                    this.currentConvTitle = this.conversations[0].title;
+                                }
+                            }
+                        } else {
+                            const err = await res.json().catch(() => ({}));
+                            this.messages.push({
+                                messageId: 'err-' + Date.now(),
+                                role: 'ASSISTANT',
+                                content: '',
+                                failed: true,
+                                failureReason: err.error || 'Server error occurred'
+                            });
+                        }
+                    } catch (e) {
+                        this.messages.push({
+                            messageId: 'err-' + Date.now(),
+                            role: 'ASSISTANT',
+                            content: '',
+                            failed: true,
+                            failureReason: 'Network error. Please check your connection.'
+                        });
+                    } finally {
+                        this.isThinking = false;
+                        this.scrollToBottom();
+                        setTimeout(() => { if (this.$refs.messageInput) this.$refs.messageInput.focus(); }, 50);
+                    }
+                },
+
+                scrollToBottom() {
+                    setTimeout(() => {
+                        const container = document.getElementById('messages-container');
+                        if (container) {
+                            container.scrollTop = container.scrollHeight;
+                        }
+                    }, 50);
+                },
+
+                renderMarkdown(text) {
+                    if (!text) return '';
+                    return marked.parse(text);
+                },
+
+                toggleSource(idx) {
+                    // Simple toggle logic or modal could go here. For now, it's just a UI element.
+                },
+
+                // --- Documents ---
+
+                async loadDocs() {
+                    if (!this.currentConvId) return;
+                    this.isLoadingDocs = true;
+                    try {
+                        const res = await fetch(`/knowledgehub/api/documents?conversationId=${this.currentConvId}`);
+                        if (res.ok) {
+                            this.docs = await res.json();
+                            this.docsCount = this.docs.filter(d => d.status === 'COMPLETED').length;
+                            
+                            // Start polling if any are processing
+                            const processing = this.docs.some(d => d.status === 'PENDING' || d.status === 'PROCESSING');
+                            if (processing && !this.pollInterval) {
+                                this.pollInterval = setInterval(() => this.pollDocs(), 3000);
+                            } else if (!processing && this.pollInterval) {
+                                this.stopPolling();
+                            }
+                        }
+                    } finally {
+                        this.isLoadingDocs = false;
+                    }
+                },
+
+                async pollDocs() {
+                    if (this.viewMode !== 'docs' || !this.currentConvId) {
+                        this.stopPolling();
+                        return;
+                    }
+                    const res = await fetch(`/knowledgehub/api/documents?conversationId=${this.currentConvId}`);
+                    if (res.ok) {
+                        this.docs = await res.json();
+                        this.docsCount = this.docs.filter(d => d.status === 'COMPLETED').length;
+                        if (!this.docs.some(d => d.status === 'PENDING' || d.status === 'PROCESSING')) {
+                            this.stopPolling();
+                        }
+                    }
+                },
+
+                stopPolling() {
+                    if (this.pollInterval) {
+                        clearInterval(this.pollInterval);
+                        this.pollInterval = null;
+                    }
+                },
+
+                handleFileSelect(e) {
+                    if (e.target.files.length > 0) {
+                        this.selectedFile = e.target.files[0];
+                    }
+                },
+                
+                handleDrop(e) {
+                    if (e.dataTransfer.files.length > 0) {
+                        this.selectedFile = e.dataTransfer.files[0];
+                        this.$refs.fileInput.files = e.dataTransfer.files;
+                    }
+                },
+
+                async uploadDocument() {
+                    if (!this.selectedFile || !this.currentConvId) return;
+                    this.isUploading = true;
+                    this.uploadError = '';
+                    
+                    const fd = new FormData();
+                    fd.append('file', this.selectedFile);
+                    fd.append('conversationId', this.currentConvId);
+                    
+                    try {
+                        const res = await fetch('/knowledgehub/api/documents/upload', {
+                            method: 'POST',
+                            body: fd
+                        });
+                        
+                        if (res.ok) {
+                            this.selectedFile = null;
+                            this.$refs.fileInput.value = '';
+                            await this.loadDocs();
+                        } else {
+                            const err = await res.json().catch(() => ({}));
+                            this.uploadError = err.error || 'Upload failed.';
+                        }
+                    } catch (e) {
+                        this.uploadError = 'Network error during upload.';
+                    } finally {
+                        this.isUploading = false;
+                    }
+                },
+
+                async deleteDoc(id) {
+                    if (!confirm('Remove this document from the vault? It will no longer be used for answers.')) return;
+                    try {
+                        await fetch(`/knowledgehub/api/documents/${id}`, { method: 'DELETE' });
+                        await this.loadDocs();
+                    } catch (e) {
+                        alert('Could not delete document.');
+                    }
+                },
+
+                async retryDoc(id) {
+                    try {
+                        const res = await fetch(`/knowledgehub/api/documents/${id}/retry`, { method: 'POST' });
+                        if (!res.ok) {
+                            const err = await res.json().catch(() => ({}));
+                            alert(err.error || 'Could not retry this document.');
+                            return;
+                        }
+                        await this.loadDocs();
+                    } catch (e) {
+                        alert('Network error while retrying the document.');
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

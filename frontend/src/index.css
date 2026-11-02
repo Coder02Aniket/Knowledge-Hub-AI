@@ -1,0 +1,253 @@
+@import "tailwindcss";
+
+:root {
+  /* Default Light ("Daylight Archival Vellum") */
+  --bg-canvas: #f6f3ec;
+  --bg-surface: #efeae0;
+  --bg-elevated: #ffffff;
+  --bg-subtle: #e5dfd2;
+  --bg-glass: rgba(246, 243, 236, 0.88);
+
+  --text-primary: #141615;
+  --text-secondary: #3f4642;
+  --text-muted: #5c6560;
+  --text-on-accent: #0d0f0e;
+
+  --border-subtle: #d4cdc0;
+  --border-strong: #948d7f;
+  --border-focus: #b87314;
+
+  --accent-primary: #b87314;
+  --accent-primary-hover: #9a5f0e;
+  --accent-primary-soft: rgba(184, 115, 20, 0.14);
+
+  --accent-grounded: #0d7a5f;
+  --accent-grounded-soft: rgba(13, 122, 95, 0.14);
+
+  --status-danger: #be123c;
+  --status-danger-soft: rgba(190, 18, 60, 0.12);
+  --status-warning: #b45309;
+  --status-warning-soft: rgba(180, 83, 9, 0.14);
+
+  --shadow-card: 0 2px 10px -2px rgba(20, 22, 21, 0.08), 0 1px 3px rgba(20, 22, 21, 0.06);
+  --shadow-drawer: -12px 0 36px -8px rgba(20, 22, 21, 0.16);
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.125rem;
+}
+
+.dark {
+  /* Dark ("Archival Obsidian & Brass Observatory") */
+  --bg-canvas: #0c0e0d;
+  --bg-surface: #121614;
+  --bg-elevated: #181d1a;
+  --bg-subtle: #1f2622;
+  --bg-glass: rgba(12, 14, 13, 0.86);
+
+  --text-primary: #f2efe9;
+  --text-secondary: #c4c0b7;
+  --text-muted: #939088;
+  --text-on-accent: #0c0e0d;
+
+  --border-subtle: #2a332e;
+  --border-strong: #49564e;
+  --border-focus: #e5a93c;
+
+  --accent-primary: #e5a93c;
+  --accent-primary-hover: #f0bc59;
+  --accent-primary-soft: rgba(229, 169, 60, 0.15);
+
+  --accent-grounded: #2dd4bf;
+  --accent-grounded-soft: rgba(45, 212, 191, 0.14);
+
+  --status-danger: #fb7185;
+  --status-danger-soft: rgba(251, 113, 133, 0.15);
+  --status-warning: #fbbf24;
+  --status-warning-soft: rgba(251, 191, 36, 0.15);
+
+  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.35);
+  --shadow-drawer: -16px 0 48px -8px rgba(0, 0, 0, 0.65);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono-code {
+  font-family: var(--font-mono);
+}
+
+/* Subtle archival grid atmosphere */
+.bg-archival-grid {
+  background-image:
+    radial-gradient(circle at 15% 10%, var(--accent-primary-soft), transparent 36%),
+    radial-gradient(circle at 85% 85%, var(--accent-grounded-soft), transparent 40%),
+    linear-gradient(to right, rgba(148, 141, 127, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 141, 127, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 2.5rem 2.5rem, 2.5rem 2.5rem;
+}
+
+/* Strong, visible WCAG 2.2 AA Focus Indicators */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* Custom subtle scrollbars */
+::-webkit-scrollbar {
+  width: 0.45rem;
+  height: 0.45rem;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* Markdown Typography Scale & Measure */
+.khub-prose {
+  font-size: 0.96875rem;
+  line-height: 1.68;
+  color: var(--text-primary);
+  max-width: 72ch;
+}
+
+.khub-prose p {
+  margin-top: 0;
+  margin-bottom: 0.875rem;
+}
+
+.khub-prose p:last-child {
+  margin-bottom: 0;
+}
+
+.khub-prose h1,
+.khub-prose h2,
+.khub-prose h3,
+.khub-prose h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.khub-prose h1 { font-size: 1.45rem; }
+.khub-prose h2 { font-size: 1.25rem; }
+.khub-prose h3 { font-size: 1.1rem; }
+
+.khub-prose ul,
+.khub-prose ol {
+  margin-top: 0.5rem;
+  margin-bottom: 0.875rem;
+  padding-left: 1.5rem;
+}
+
+.khub-prose ul {
+  list-style-type: disc;
+}
+
+.khub-prose ol {
+  list-style-type: decimal;
+}
+
+.khub-prose li {
+  margin-bottom: 0.35rem;
+}
+
+.khub-prose blockquote {
+  border-left: 3px solid var(--accent-primary);
+  background: var(--accent-primary-soft);
+  padding: 0.625rem 1rem;
+  margin: 0.875rem 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.khub-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.875rem;
+}
+
+.khub-prose th,
+.khub-prose td {
+  border: 1px solid var(--border-subtle);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.khub-prose th {
+  background: var(--bg-subtle);
+  font-weight: 600;
+}
+
+.khub-prose a {
+  color: var(--accent-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-slide-up {
+  animation: fadeSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

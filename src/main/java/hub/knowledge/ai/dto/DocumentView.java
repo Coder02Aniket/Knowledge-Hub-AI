@@ -1,5 +1,6 @@
 package hub.knowledge.ai.dto;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
 import hub.knowledge.ai.model.DocumentStatus;
 
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ public record DocumentView(
         LocalDateTime createdAt,
         boolean retryable
 ) {
+    @JsonGetter("sizeLabel")
     public String sizeLabel() {
         if (fileSize <= 0) {
             return "—";
@@ -27,6 +29,7 @@ public record DocumentView(
         return String.format(java.util.Locale.ROOT, "%.0f KB", fileSize / 1024.0);
     }
 
+    @JsonGetter("extension")
     public String extension() {
         int dot = fileName == null ? -1 : fileName.lastIndexOf('.');
         if (dot < 0 || dot == fileName.length() - 1) {
@@ -35,6 +38,7 @@ public record DocumentView(
         return fileName.substring(dot + 1).toUpperCase(java.util.Locale.ROOT);
     }
 
+    @JsonGetter("ready")
     public boolean isReady() {
         return status == DocumentStatus.COMPLETED;
     }

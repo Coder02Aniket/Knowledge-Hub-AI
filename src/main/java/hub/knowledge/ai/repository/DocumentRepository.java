@@ -21,6 +21,9 @@ public interface DocumentRepository extends JpaRepository<Document, String> {
     List<Document> findByConversation_ConversationIdAndUser_IdOrderByCreatedAtDesc(
             String conversationId, String userId);
 
+    List<Document> findByConversation_ConversationIdAndUser_IdAndStatusOrderByCreatedAtDesc(
+            String conversationId, String userId, DocumentStatus status);
+
     @EntityGraph(attributePaths = {"conversation"})
     List<Document> findByUser_IdOrderByCreatedAtDesc(String userId);
 

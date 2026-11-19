@@ -32,6 +32,40 @@ public class KnowledgeHubProperties {
         private int topK = 6;
         private double minScore = 0.20;
         private int maxContextCharacters = 9000;
+
+        /** How many candidates each retriever contributes before fusion. */
+        private int vectorCandidates = 20;
+        private int lexicalCandidates = 20;
+        /** Reciprocal Rank Fusion constant. */
+        private int rrfK = 60;
+
+        private Decision decision = new Decision();
+        private Grep grep = new Grep();
+    }
+
+    @Data
+    public static class Decision {
+        private boolean enabled = true;
+        private String model = "gemini-decision-1";
+        private String endpoint = "https://generativelanguage.googleapis.com/v1beta/decisions";
+        private int timeoutMs = 3000;
+        private int maxPassages = 20;
+        private int snippetChars = 600;
+        private double relevanceThreshold = 0.55;
+        private double routeConfidenceThreshold = 0.60;
+        private boolean injectionScreen = true;
+        private double injectionThreshold = 0.70;
+        private double dominanceGap = 0.15;
+    }
+
+    @Data
+    public static class Grep {
+        private boolean enabled = true;
+        private int maxDocuments = 10;
+        private int maxHitsPerDocument = 20;
+        private int contextLines = 2;
+        private int triggerMinLexicalHits = 1;
+        private int cacheEntries = 64;
     }
 
     @Data

@@ -1,0 +1,11 @@
+{
+  "model": {
+    "name": "gemini-2.5-pro"
+  },
+  "general": {
+    "defaultApprovalMode": "default"
+  },
+  "ui": {
+    "inlineThinkingMode": "full"
+  }
+}

@@ -8,7 +8,8 @@ public record SourceView(
         int chunkIndex,
         Integer pageNumber,
         double similarity,
-        String snippet
+        String snippet,
+        String retrievalMethod
 ) {
     @JsonGetter("scoreLabel")
     public String scoreLabel() {

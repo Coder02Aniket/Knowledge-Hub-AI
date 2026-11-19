@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { MessageView, SourceView } from '../../types';
 import { cn } from '../../lib/utils';
+import { RetrievalBadge } from './RetrievalBadge';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Bot, User, FileText, ChevronDown, ChevronUp } from 'lucide-react';
@@ -59,7 +60,7 @@ function SourceReference({ source, index }: { source: SourceView, index: number 
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="relative group">
+    <div className="relative group flex items-center gap-1.5">
       <button 
         onClick={() => setExpanded(!expanded)}
         className={cn(
@@ -75,6 +76,8 @@ function SourceReference({ source, index }: { source: SourceView, index: number 
         <span className="truncate max-w-[120px]" title={source.documentName}>{source.documentName}</span>
         {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
       </button>
+
+      <RetrievalBadge method={source.retrievalMethod} />
 
       {expanded && (
         <div className="absolute z-10 top-full mt-2 left-0 w-72 md:w-96 bg-popover border border-border rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">

@@ -9,6 +9,8 @@ export interface SourceView {
   snippet: string;
   scoreLabel?: string;
   locationLabel?: string;
+  /** Retriever(s) that produced this chunk, e.g. "VECTOR", "GREP" or "VECTOR+LEXICAL+GREP". */
+  retrievalMethod?: string;
 }
 
 export interface MessageView {

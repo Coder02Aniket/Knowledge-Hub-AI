@@ -115,6 +115,31 @@
   height: 8px;
 }
 
+/* Retrieval badge blink */
+@keyframes kh-blink {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+}
+
+.kh-blink {
+  animation: kh-blink 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kh-blink {
+    animation: none;
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }

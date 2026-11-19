@@ -92,8 +92,31 @@ class RetrievalServiceTest {
         assertThat(result.reranked()).isTrue();
         assertThat(result.candidateCount()).isEqualTo(2);
         assertThat(result.chunks()).extracting(RetrievedChunk::chunkId).containsExactly("a", "b");
-        assertThat(result.chunks()).extracting(RetrievedChunk::retrievalMethod).containsOnly("DECISION");
+        assertThat(result.chunks()).extracting(RetrievedChunk::retrievalMethod)
+                .containsExactly("VECTOR", "LEXICAL");
         assertThat(result.chunks().get(0).similarity()).isEqualTo(0.9);
+    }
+
+    @Test
+    void ordersMultiTierProvenanceDeterministically() {
+        when(documentRepository.countByConversation_ConversationIdAndStatus(
+                "conv", DocumentStatus.COMPLETED)).thenReturn(1L);
+        when(embeddingService.embedQuery("question")).thenReturn(new float[768]);
+        CandidateChunk combined = new CandidateChunk(
+                "c", "doc", "file.pdf", 1, 2, "content", 0.5, 0.5, 0.5, 0.7, Set.of("GREP", "VECTOR"));
+        when(vectorSearchRepository.vectorSearch(anyString(), anyString(), any(), anyDouble(), anyInt()))
+                .thenReturn(List.of(combined));
+        when(lexicalSearchRepository.search(anyString(), anyString(), anyString(), anyInt()))
+                .thenReturn(List.of());
+
+        when(decisionModel.decide(anyString(), any(), eq(true))).thenReturn(
+                new RerankDecision(RetrievalRoute.GROUNDED, List.of(new RerankDecision.ScoredChunk("c", 0.9, 0.0)),
+                        0.9, false, "fallback"));
+
+        RetrievalResult result = service.retrieve("conv", "user", "question");
+
+        assertThat(result.chunks()).hasSize(1);
+        assertThat(result.chunks().get(0).retrievalMethod()).isEqualTo("VECTOR+GREP");
     }
 
     @Test

@@ -119,6 +119,7 @@ public class ChatService {
                 source.setChunkIndex(chunk.chunkIndex());
                 source.setPageNumber(chunk.pageNumber());
                 source.setSimilarity(chunk.similarity());
+                source.setRetrievalMethod(chunk.retrievalMethod());
                 // Only keep a snippet for the UI, not the whole chunk
                 String snippet = chunk.content();
                 if (snippet != null && snippet.length() > 300) {

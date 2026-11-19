@@ -47,7 +47,8 @@ public class ChatApiController {
                         s.getChunkIndex(),
                         s.getPageNumber(),
                         s.getSimilarity(),
-                        s.getSnippet()))
+                        s.getSnippet(),
+                        s.getRetrievalMethod()))
                 .toList();
 
         return new MessageView(

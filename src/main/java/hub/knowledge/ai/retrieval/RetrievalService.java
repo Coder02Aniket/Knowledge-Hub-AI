@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Hybrid retrieval: pgvector + lexical + optional grep, fused with reciprocal rank
@@ -19,6 +20,9 @@ import java.util.Map;
 @Slf4j
 @Service
 public class RetrievalService {
+
+    /** Stable display order for provenance, independent of set iteration order. */
+    private static final List<String> METHOD_ORDER = List.of("VECTOR", "LEXICAL", "GREP");
 
     private final EmbeddingService embeddingService;
     private final ChunkSearchRepository vectorSearchRepository;
@@ -99,17 +103,35 @@ public class RetrievalService {
             if (candidate == null) {
                 continue;
             }
+            // Provenance is kept even when the decision model reranked the chunk, so the
+            // UI can always explain whether a citation came from vector, keyword or grep.
+            String method = retrievalMethod(candidate);
             if (decision.reranked()) {
                 chunks.add(RetrievedChunk.fromCandidate(
-                        candidate, scored.relevance(), scored.relevance(), "DECISION"));
+                        candidate, scored.relevance(), scored.relevance(), method));
             } else {
-                String method = candidate.matchedBy().isEmpty()
-                        ? "FUSED"
-                        : String.join("+", candidate.matchedBy());
                 chunks.add(RetrievedChunk.fromCandidate(
                         candidate, candidate.fusedScore(), 0.0, method));
             }
         }
         return chunks;
+    }
+
+    private String retrievalMethod(CandidateChunk candidate) {
+        Set<String> matched = candidate.matchedBy();
+        if (matched == null || matched.isEmpty()) {
+            return "FUSED";
+        }
+        List<String> ordered = new ArrayList<>(matched.size());
+        for (String method : METHOD_ORDER) {
+            if (matched.contains(method)) {
+                ordered.add(method);
+            }
+        }
+        matched.stream()
+                .filter(method -> !METHOD_ORDER.contains(method))
+                .sorted()
+                .forEach(ordered::add);
+        return String.join("+", ordered);
     }
 }

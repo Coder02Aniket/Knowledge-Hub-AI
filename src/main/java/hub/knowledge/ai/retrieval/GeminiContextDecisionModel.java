@@ -134,7 +134,10 @@ public class GeminiContextDecisionModel implements ContextDecisionModel {
         for (int i = 0; i < count; i++) {
             questions.put("p" + i, DecisionQuestion.noul(
                     "Does passage [P" + i + "] contain evidence that directly answers the question? "
-                            + "Judge only passage [P" + i + "].",
+                            + "Judge only passage [P" + i + "]. "
+                            + "A passage that lists or mentions a skill, tool, or technology is usable "
+                            + "evidence for whether that technology is part of the person's profile; for "
+                            + "listing-style questions a direct mention is sufficient.",
                     "The passage states facts needed for the answer.",
                     "Same topic but no usable evidence, or unrelated."));
 

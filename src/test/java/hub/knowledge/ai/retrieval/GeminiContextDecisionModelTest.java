@@ -149,6 +149,7 @@ class GeminiContextDecisionModelTest {
         assertThat(captor.getValue()).containsKeys("route", "p0", "p1", "s0", "s1");
         assertThat(captor.getValue().get("route").type()).isEqualTo("choice");
         assertThat(captor.getValue().get("p0").type()).isEqualTo("noul");
+        assertThat(captor.getValue().get("p0").instructions()).contains("lists or mentions");
     }
 
     @Test

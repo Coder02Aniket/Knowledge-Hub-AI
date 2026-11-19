@@ -1,44 +1,27 @@
-import { apiFetch } from './client';
-import type { AuthStatusResponse, LoginRequest, RegisterRequest } from '../types/api';
+import { api, baseApi } from './client';
 
 export const authApi = {
-  getStatus(): Promise<AuthStatusResponse> {
-    return apiFetch<AuthStatusResponse>('/auth/status', {
-      method: 'GET',
-      skipUnauthorizedRedirect: true,
-    });
+  status: async () => {
+    const { data } = await baseApi.get('/auth/status');
+    return data;
   },
-
-  login(credentials: LoginRequest): Promise<{ username: string }> {
-    const body = new URLSearchParams();
-    body.set('username', credentials.username);
-    body.set('password', credentials.password);
-
-    return apiFetch<{ username: string }>('/api/auth/login', {
-      method: 'POST',
+  login: async (credentials: { username: string; password: string }) => {
+    const params = new URLSearchParams();
+    params.append('username', credentials.username);
+    params.append('password', credentials.password);
+    
+    const { data } = await api.post('/auth/login', params, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: body.toString(),
-      skipUnauthorizedRedirect: true,
     });
+    return data;
   },
-
-  register(payload: RegisterRequest): Promise<{ message: string; username: string }> {
-    return apiFetch<{ message: string; username: string }>('/api/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      skipUnauthorizedRedirect: true,
-    });
+  register: async (details: any) => {
+    const { data } = await api.post('/auth/register', details);
+    return data;
   },
-
-  logout(): Promise<void> {
-    return apiFetch<void>('/api/auth/logout', {
-      method: 'POST',
-      skipUnauthorizedRedirect: true,
-    });
-  },
+  logout: async () => {
+    await api.post('/auth/logout');
+  }
 };

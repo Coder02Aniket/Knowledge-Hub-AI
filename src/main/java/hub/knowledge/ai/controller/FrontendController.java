@@ -11,6 +11,7 @@ public class FrontendController {
             "/",
             "/index",
             "/chat",
+            "/chat/{conversationId}",
             "/documents",
             "/vault",
             "/login",

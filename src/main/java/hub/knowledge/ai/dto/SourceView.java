@@ -1,5 +1,7 @@
 package hub.knowledge.ai.dto;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
+
 public record SourceView(
         String documentId,
         String documentName,
@@ -8,10 +10,12 @@ public record SourceView(
         double similarity,
         String snippet
 ) {
+    @JsonGetter("scoreLabel")
     public String scoreLabel() {
         return Math.round(similarity * 100) + "%";
     }
 
+    @JsonGetter("locationLabel")
     public String locationLabel() {
         if (pageNumber != null && pageNumber > 0) {
             return "p. " + pageNumber + " · chunk " + (chunkIndex + 1);

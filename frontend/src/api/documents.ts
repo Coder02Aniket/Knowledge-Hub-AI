@@ -1,40 +1,31 @@
-import { API_BASE, apiFetch } from './client';
-import type { DocumentView } from '../types/api';
+import { api } from './client';
+import type { DocumentView } from '../types';
 
-export const documentsApi = {
-  list(conversationId?: string | null): Promise<DocumentView[]> {
-    const query = conversationId
-      ? `?conversationId=${encodeURIComponent(conversationId)}`
-      : '';
-    return apiFetch<DocumentView[]>(`/api/documents${query}`, {
-      method: 'GET',
-    });
-  },
-
-  upload(file: File, conversationId: string): Promise<DocumentView> {
+export const documentApi = {
+  upload: async (file: File, conversationId: string): Promise<DocumentView> => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('conversationId', conversationId);
-
-    return apiFetch<DocumentView>('/api/documents/upload', {
-      method: 'POST',
-      body: formData,
-    });
+    const { data } = await api.post('/documents/upload', formData);
+    return data;
   },
 
-  retry(documentId: string): Promise<DocumentView> {
-    return apiFetch<DocumentView>(`/api/documents/${encodeURIComponent(documentId)}/retry`, {
-      method: 'POST',
-    });
+  list: async (conversationId?: string): Promise<DocumentView[]> => {
+    const params = conversationId ? { conversationId } : {};
+    const { data } = await api.get('/documents', { params });
+    return data;
   },
 
-  remove(documentId: string): Promise<void> {
-    return apiFetch<void>(`/api/documents/${encodeURIComponent(documentId)}`, {
-      method: 'DELETE',
-    });
+  delete: async (documentId: string): Promise<void> => {
+    await api.delete(`/documents/${documentId}`);
   },
 
-  getDownloadUrl(documentId: string): string {
-    return `${API_BASE}/api/documents/${encodeURIComponent(documentId)}/download`;
+  retry: async (documentId: string): Promise<DocumentView> => {
+    const { data } = await api.post(`/documents/${documentId}/retry`);
+    return data;
+  },
+
+  download: (documentId: string): void => {
+    window.location.href = `/knowledgehub/api/documents/${documentId}/download`;
   },
 };

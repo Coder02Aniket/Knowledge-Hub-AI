@@ -3,7 +3,9 @@ package hub.knowledge.ai.retrieval;
 import hub.knowledge.ai.config.KnowledgeHubProperties;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Builds the grounded prompt. Retrieved content is wrapped and explicitly marked as
@@ -44,15 +46,33 @@ public class RagPromptBuilder {
             4. Never claim to have read documents that were not provided.
             """;
 
+    /**
+     * Used when documents are attached but the retriever found no excerpt that answers the
+     * question. The assistant must refuse instead of quietly falling back to general knowledge.
+     */
+    public static final String INSUFFICIENT_SYSTEM_PROMPT = """
+            You are KnowledgeHub, a careful document question-answering assistant.
+
+            The attached documents do not contain enough information to answer this question.
+            1. Say clearly and briefly that the uploaded documents do not cover it.
+            2. Do not answer from general knowledge, and do not invent facts.
+            3. Suggest what kind of document would be needed, if that is useful.
+            4. Be concise and use Markdown.
+            """;
+
     private final KnowledgeHubProperties properties;
+
     public RagPromptBuilder(KnowledgeHubProperties properties) {
         this.properties = properties;
     }
 
-    public String buildUserPrompt(String question, List<RetrievedChunk> chunks) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("CONTEXT\n");
-        if (chunks.isEmpty()) {
+    public PromptContext buildUserPrompt(String question,
+                                         List<RetrievedChunk> chunks,
+                                         RetrievalRoute route) {
+        StringBuilder prompt = new StringBuilder("CONTEXT\n");
+        List<RetrievedChunk> included = new ArrayList<>();
+
+        if (route == RetrievalRoute.INSUFFICIENT || chunks == null || chunks.isEmpty()) {
             prompt.append("No relevant excerpts were retrieved from the attached documents.\n");
         } else {
             int budget = properties.getRetrieval().getMaxContextCharacters();
@@ -62,13 +82,16 @@ public class RagPromptBuilder {
                 String header = "[" + number + "] document=\"" + safe(chunk.documentName()) + "\""
                         + (chunk.pageNumber() != null ? " page=" + chunk.pageNumber() : "")
                         + " chunk=" + chunk.chunkIndex()
-                        + " similarity=" + String.format(java.util.Locale.ROOT, "%.3f", chunk.similarity())
+                        + " relevance=" + String.format(Locale.ROOT, "%.3f", chunk.similarity())
                         + "\n";
                 int remaining = budget - used;
                 if (remaining <= header.length() + 80) {
                     break;
                 }
                 String body = chunk.content();
+                if (body == null) {
+                    body = "";
+                }
                 if (body.length() > remaining - header.length() - 8) {
                     body = body.substring(0, Math.max(0, remaining - header.length() - 8)) + "...";
                 }
@@ -77,6 +100,7 @@ public class RagPromptBuilder {
                         .append(body)
                         .append("\nUNTRUSTED_DOCUMENT_EXCERPT>>>\n\n");
                 used += header.length() + body.length();
+                included.add(chunk);
                 number++;
             }
         }
@@ -85,10 +109,11 @@ public class RagPromptBuilder {
                 .append(question == null ? "" : question.trim())
                 .append("\n\nReminder: use only the CONTEXT excerpts above. If they are insufficient, "
                         + "say so explicitly instead of inventing an answer.");
-        return prompt.toString();
+        return new PromptContext(prompt.toString(), List.copyOf(included));
     }
 
-    public String noDocumentsNotice() {        return "I don't have any completed documents attached to this conversation yet. "
+    public String noDocumentsNotice() {
+        return "I don't have any completed documents attached to this conversation yet. "
                 + "Upload a PDF or text file and ask again once processing finishes.";
     }
 

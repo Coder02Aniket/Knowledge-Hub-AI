@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Set;
 
 /**
  * pgvector similarity search. JdbcTemplate is used deliberately: Hibernate has no
@@ -42,11 +43,11 @@ public class ChunkSearchRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public List<RetrievedChunk> search(String conversationId,
-                                       String ownerId,
-                                       float[] queryEmbedding,
-                                       double minScore,
-                                       int limit) {
+    public List<CandidateChunk> vectorSearch(String conversationId,
+                                             String ownerId,
+                                             float[] queryEmbedding,
+                                             double minScore,
+                                             int limit) {
         String literal = EmbeddingCodec.toLiteral(queryEmbedding);
         return jdbcTemplate.query(SEARCH_SQL,
                 (rs, rowNum) -> map(rs),
@@ -57,16 +58,21 @@ public class ChunkSearchRepository {
                 limit);
     }
 
-    private RetrievedChunk map(ResultSet rs) throws SQLException {
+    private CandidateChunk map(ResultSet rs) throws SQLException {
         int page = rs.getInt("page_number");
         Integer pageNumber = rs.wasNull() ? null : page;
-        return new RetrievedChunk(
+        double similarity = rs.getDouble("similarity");
+        return new CandidateChunk(
                 rs.getString("chunk_id"),
                 rs.getString("document_id"),
                 rs.getString("document_name"),
                 rs.getInt("chunk_index"),
                 pageNumber,
                 rs.getString("content"),
-                rs.getDouble("similarity"));
+                similarity,
+                0.0,
+                0.0,
+                0.0,
+                Set.of("VECTOR"));
     }
 }

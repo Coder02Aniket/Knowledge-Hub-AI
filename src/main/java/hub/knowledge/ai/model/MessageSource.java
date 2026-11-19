@@ -40,6 +40,13 @@ public class MessageSource {
     @Column(name = "similarity")
     private double similarity;
 
+    /**
+     * Which retriever(s) produced this chunk: {@code VECTOR}, {@code LEXICAL}, {@code GREP}
+     * or a {@code +}-joined combination. Null for citations saved before this was tracked.
+     */
+    @Column(name = "retrieval_method", length = 32)
+    private String retrievalMethod;
+
     @Column(name = "snippet", columnDefinition = "text")
     private String snippet;
 

@@ -18,6 +18,14 @@ public final class StorageKeys {
                 + "/" + safeFileName(originalName);
     }
 
+    /**
+     * Sidecar object holding the normalized extracted text of a document. Used by the
+     * grep retriever so it never has to re-download and re-parse the original file.
+     */
+    public static String extractedText(String objectKey) {
+        return objectKey + ".txt";
+    }
+
     public static String safeFileName(String originalName) {
         String name = (originalName == null) ? "document" : originalName;
         name = name.replace('\\', '/');

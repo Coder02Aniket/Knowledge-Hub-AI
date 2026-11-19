@@ -8,14 +8,15 @@ import hub.knowledge.ai.exception.ForbiddenException;
 import hub.knowledge.ai.exception.NotFoundException;
 import hub.knowledge.ai.exception.ValidationException;
 import hub.knowledge.ai.model.Conversation;
-import hub.knowledge.ai.model.DocumentStatus;
 import hub.knowledge.ai.model.Message;
 import hub.knowledge.ai.model.MessageRole;
 import hub.knowledge.ai.model.MessageSource;
 import hub.knowledge.ai.model.User;
-import hub.knowledge.ai.repository.DocumentRepository;
 import hub.knowledge.ai.repository.MessageRepository;
+import hub.knowledge.ai.retrieval.PromptContext;
 import hub.knowledge.ai.retrieval.RagPromptBuilder;
+import hub.knowledge.ai.retrieval.RetrievalResult;
+import hub.knowledge.ai.retrieval.RetrievalRoute;
 import hub.knowledge.ai.retrieval.RetrievalService;
 import hub.knowledge.ai.retrieval.RetrievedChunk;
 import org.springframework.data.domain.PageRequest;
@@ -23,7 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,7 +37,6 @@ public class ChatService {
     private final RetrievalService retrievalService;
     private final ChatCompletionService chatCompletionService;
     private final RagPromptBuilder ragPromptBuilder;
-    private final DocumentRepository documentRepository;
     private final KnowledgeHubProperties properties;
     private final TransactionTemplate transactionTemplate;
 
@@ -47,7 +46,6 @@ public class ChatService {
                        RetrievalService retrievalService,
                        ChatCompletionService chatCompletionService,
                        RagPromptBuilder ragPromptBuilder,
-                       DocumentRepository documentRepository,
                        KnowledgeHubProperties properties,
                        TransactionTemplate transactionTemplate) {
         this.conversationService = conversationService;
@@ -56,7 +54,6 @@ public class ChatService {
         this.retrievalService = retrievalService;
         this.chatCompletionService = chatCompletionService;
         this.ragPromptBuilder = ragPromptBuilder;
-        this.documentRepository = documentRepository;
         this.properties = properties;
         this.transactionTemplate = transactionTemplate;
     }
@@ -85,20 +82,20 @@ public class ChatService {
         userMessage.setContent(userInput.trim());
         transactionTemplate.executeWithoutResult(status -> messageRepository.save(userMessage));
 
-        // 2. Retrieve Documents
-        List<RetrievedChunk> chunks = retrievalService.retrieve(
+        // 2. Retrieve and route
+        RetrievalResult result = retrievalService.retrieve(
                 conversation.getConversationId(), user.getId(), userMessage.getContent());
 
-        // 3. Build Prompt. Without any completed document the assistant answers from general
-        // knowledge; as soon as the vault has content it is strictly grounded and cited.
-        boolean hasDocuments = documentRepository.countByConversation_ConversationIdAndStatus(
-                conversation.getConversationId(), DocumentStatus.COMPLETED) > 0;
-        String systemPrompt = hasDocuments
-                ? RagPromptBuilder.SYSTEM_PROMPT
-                : RagPromptBuilder.GENERAL_SYSTEM_PROMPT;
-        String groundedPrompt = hasDocuments
-                ? ragPromptBuilder.buildUserPrompt(userMessage.getContent(), chunks)
-                : userMessage.getContent();
+        // 3. Build Prompt. The retriever decides whether to ground, answer generally, or refuse.
+        String systemPrompt = switch (result.route()) {
+            case GROUNDED -> RagPromptBuilder.SYSTEM_PROMPT;
+            case GENERAL -> RagPromptBuilder.GENERAL_SYSTEM_PROMPT;
+            case INSUFFICIENT -> RagPromptBuilder.INSUFFICIENT_SYSTEM_PROMPT;
+        };
+        PromptContext context = result.route() == RetrievalRoute.GENERAL
+                ? new PromptContext(userMessage.getContent(), List.of())
+                : ragPromptBuilder.buildUserPrompt(
+                        userMessage.getContent(), result.chunks(), result.route());
 
         // 4. Fetch History
         List<ChatTurn> history = getHistory(conversation.getConversationId());
@@ -108,19 +105,21 @@ public class ChatService {
         assistantMessage.setConversation(conversation);
         assistantMessage.setUser(user);
         assistantMessage.setRole(MessageRole.ASSISTANT);
-        
+
         try {
-            ChatCompletion completion = chatCompletionService.complete(history, systemPrompt, groundedPrompt);
+            ChatCompletion completion = chatCompletionService.complete(
+                    history, systemPrompt, context.prompt());
             assistantMessage.setContent(completion.content());
             assistantMessage.setModelName(completion.modelName());
-            
-            for (RetrievedChunk chunk : chunks) {
+
+            for (RetrievedChunk chunk : context.included()) {
                 MessageSource source = new MessageSource();
                 source.setDocumentId(chunk.documentId());
                 source.setDocumentName(chunk.documentName());
                 source.setChunkIndex(chunk.chunkIndex());
                 source.setPageNumber(chunk.pageNumber());
                 source.setSimilarity(chunk.similarity());
+                source.setRetrievalMethod(chunk.retrievalMethod());
                 // Only keep a snippet for the UI, not the whole chunk
                 String snippet = chunk.content();
                 if (snippet != null && snippet.length() > 300) {
@@ -156,12 +155,12 @@ public class ChatService {
         // Retrieve the most recent N successful messages
         List<Message> recent = messageRepository.findRecent(conversationId, PageRequest.of(0, max));
         Collections.reverse(recent);
-        
+
         // Remove the latest user message because we're sending it as the grounded current prompt
         if (!recent.isEmpty() && recent.get(recent.size() - 1).getRole() == MessageRole.USER) {
             recent.remove(recent.size() - 1);
         }
-        
+
         return recent.stream()
                 .map(m -> new ChatTurn(m.getRole(), m.getContent()))
                 .collect(Collectors.toList());

@@ -4,6 +4,8 @@ import { cn } from '../../lib/utils';
 import { RetrievalBadge } from './RetrievalBadge';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import { Bot, User, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface MessageItemProps {
@@ -38,7 +40,7 @@ export function MessageItem({ message }: MessageItemProps) {
               <span>{message.failureReason || 'Failed to generate a response.'}</span>
             </div>
           ) : (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
               {message.content}
             </ReactMarkdown>
           )}

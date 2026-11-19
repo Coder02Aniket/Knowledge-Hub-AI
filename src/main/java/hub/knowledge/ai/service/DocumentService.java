@@ -183,6 +183,15 @@ public class DocumentService {
                     document.getObjectKey(), documentId, e.getMessage());
         }
 
+        if (document.getObjectKey() != null) {
+            try {
+                storageService.delete(StorageKeys.extractedText(document.getObjectKey()));
+            } catch (Exception e) {
+                log.warn("Could not delete extracted text for document {}: {}",
+                        documentId, e.getMessage());
+            }
+        }
+
         transactionTemplate.executeWithoutResult(status -> {
             chunkRepository.deleteAllForDocument(documentId);
             documentRepository.delete(document);

@@ -8,16 +8,20 @@ import hub.knowledge.ai.model.DocumentChunk;
 import hub.knowledge.ai.model.DocumentStatus;
 import hub.knowledge.ai.repository.DocumentChunkRepository;
 import hub.knowledge.ai.repository.DocumentRepository;
+import hub.knowledge.ai.storage.ObjectStorageService;
+import hub.knowledge.ai.storage.StorageKeys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -28,6 +32,7 @@ public class DocumentProcessingService {
     private final EmbeddingService embeddingService;
     private final DocumentRepository documentRepository;
     private final DocumentChunkRepository chunkRepository;
+    private final ObjectStorageService objectStorage;
     private final TransactionTemplate transactionTemplate;
 
     public DocumentProcessingService(DocumentTextExtractor textExtractor,
@@ -35,12 +40,14 @@ public class DocumentProcessingService {
                                      EmbeddingService embeddingService,
                                      DocumentRepository documentRepository,
                                      DocumentChunkRepository chunkRepository,
+                                     ObjectStorageService objectStorage,
                                      TransactionTemplate transactionTemplate) {
         this.textExtractor = textExtractor;
         this.textChunker = textChunker;
         this.embeddingService = embeddingService;
         this.documentRepository = documentRepository;
         this.chunkRepository = chunkRepository;
+        this.objectStorage = objectStorage;
         this.transactionTemplate = transactionTemplate;
     }
 
@@ -66,6 +73,10 @@ public class DocumentProcessingService {
                 throw new DocumentProcessingException("The document contains no chunkable text.");
             }
             log.info("Document {} split into {} chunks", documentId, drafts.size());
+
+            // Sidecar text for the grep retriever. Best-effort: a failure here must not
+            // block ingestion, because vector and lexical retrieval still work.
+            storeExtractedText(documentId, buildFullText(extracted));
 
             // Embedding is slow (network), so it deliberately happens outside any transaction.
             List<DocumentChunk> chunks = new ArrayList<>(drafts.size());
@@ -138,6 +149,34 @@ public class DocumentProcessingService {
                     documentRepository.updateStatus(documentId, DocumentStatus.FAILED, reason, LocalDateTime.now()));
         } catch (Exception nested) {
             log.error("Could not mark document {} as failed", documentId, nested);
+        }
+    }
+
+    private String buildFullText(ExtractedDocument extracted) {
+        return extracted.pages().stream()
+                .map(page -> (page.pageNumber() > 0 ? "<<<PAGE " + page.pageNumber() + ">>>\n" : "")
+                        + page.text())
+                .collect(Collectors.joining("\n\n"));
+    }
+
+    private void storeExtractedText(String documentId, String fullText) {
+        if (fullText == null || fullText.isBlank()) {
+            return;
+        }
+        try {
+            Document document = documentRepository.findById(documentId).orElse(null);
+            if (document == null || document.getObjectKey() == null) {
+                return;
+            }
+            Path textFile = Files.createTempFile("khub_text_", ".txt");
+            try {
+                Files.writeString(textFile, fullText, StandardCharsets.UTF_8);
+                objectStorage.put(StorageKeys.extractedText(document.getObjectKey()), textFile, "text/plain");
+            } finally {
+                Files.deleteIfExists(textFile);
+            }
+        } catch (Exception e) {
+            log.warn("Could not store extracted text for document {}: {}", documentId, e.getMessage());
         }
     }
 
